@@ -2,7 +2,7 @@
 local HttpService = game:GetService("HttpService")
 
 -- Ganti dengan webhook kamu
-local webhookUrl = "https://discord.com/api/webhooks/1414541460719669268/PzPaHEdYGkhQZNPSQfgeKB0TLUUai0RWL67QWV2jk-JJzuIbWveqYtmgQZpM8xl08XTX"
+local webhookUrl = ""
 
 local function sendWebhook()
     local data = {
