@@ -1,4 +1,4 @@
--- Fish It Webhook AFK Script (Final All-in-One)
+-- Fish It Webhook AFK Script (Final All-in-One with Monitoring)
 -- Support Xeno, Delta, Synapse (pakai http_request/request/syn.request)
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -11,6 +11,11 @@ local connectionLost = false
 local lastChatMessage = ""
 local webhookUrl = ""
 local selectedIsland = "Default"
+
+-- Counter & timer
+local mythicCount = 0
+local secretCount = 0
+local sessionStart = tick()
 
 -- Config file
 local CONFIG_FILE = "FishIt_Config.json"
@@ -54,26 +59,8 @@ local mythicFish = {
 local enableDebug = false
 local enableAutoRejoin = true
 
--- Kirim webhook (via executor request)
-local function sendToDiscord(fishName, rarity, weight)
-    if webhookUrl == "" then return end
-    local color = rarity == "Secret" and 0x00ffff or 0xff0000
-    local data = {
-        ["content"] = "@everyone",
-        ["embeds"] = {{
-            ["title"] = "🎣 IKAN LANGKA TERTANGKAP! 🎣",
-            ["description"] = string.format("**%s** mendapat ikan langka!", player.Name),
-            ["color"] = color,
-            ["fields"] = {
-                {["name"] = "🐟 Nama Ikan", ["value"] = fishName, ["inline"] = true},
-                {["name"] = "⭐ Rarity", ["value"] = rarity, ["inline"] = true},
-                {["name"] = "⚖️ Berat", ["value"] = string.format("%.2f kg", weight), ["inline"] = true}
-            },
-            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-            ["footer"] = {["text"] = "Fish It Auto Webhook"}
-        }}
-    }
-    local body = HttpService:JSONEncode(data)
+-- Fungsi request universal
+local function doRequest(body)
     local requestFunc = (http_request or request or syn and syn.request)
     if requestFunc then
         pcall(function()
@@ -87,6 +74,58 @@ local function sendToDiscord(fishName, rarity, weight)
     end
 end
 
+-- Kirim webhook ikan langka
+local function sendToDiscord(fishName, rarity, weight)
+    if webhookUrl == "" then return end
+    local color = rarity == "Secret" and 0x00ffff or 0xff0000
+    local data = {
+        ["content"] = "@everyone",
+        ["embeds"] = {{
+            ["title"] = "🎣 IKAN LANGKA TERTANGKAP!",
+            ["description"] = string.format("**%s** mendapat ikan langka!", player.Name),
+            ["color"] = color,
+            ["fields"] = {
+                {["name"] = "🐟 Nama Ikan", ["value"] = fishName, ["inline"] = true},
+                {["name"] = "⭐ Rarity", ["value"] = rarity, ["inline"] = true},
+                {["name"] = "⚖️ Berat", ["value"] = string.format("%.2f kg", weight), ["inline"] = true}
+            },
+            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            ["footer"] = {["text"] = "Fish It Auto Webhook"}
+        }}
+    }
+    local body = HttpService:JSONEncode(data)
+    doRequest(body)
+end
+
+-- Kirim monitoring
+local function sendMonitoring()
+    if webhookUrl == "" then return end
+    local elapsed = tick() - sessionStart
+    local minutes = math.floor(elapsed / 60)
+    local seconds = math.floor(elapsed % 60)
+    local sessionTime = string.format("%02d:%02d", minutes, seconds)
+
+    local data = {
+        ["content"] = "",
+        ["embeds"] = {{
+            ["title"] = "📊 Fish It Monitoring",
+            ["description"] = "Status pemantauan script",
+            ["color"] = 0x00ff00,
+            ["fields"] = {
+                {["name"] = "👤 Player", ["value"] = player.Name, ["inline"] = true},
+                {["name"] = "📡 Status", ["value"] = connectionLost and "❌ Disconnect" or "✅ Masih mancing", ["inline"] = true},
+                {["name"] = "⏳ Session Time", ["value"] = sessionTime, ["inline"] = true},
+                {["name"] = "⭐ Mythic Caught", ["value"] = tostring(mythicCount), ["inline"] = true},
+                {["name"] = "💎 Secret Caught", ["value"] = tostring(secretCount), ["inline"] = true}
+            },
+            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            ["footer"] = {["text"] = "Fish It Monitor"}
+        }}
+    }
+    local body = HttpService:JSONEncode(data)
+    doRequest(body)
+end
+
 -- Tes webhook manual
 local function testWebhook()
     if webhookUrl == "" then
@@ -97,7 +136,7 @@ local function testWebhook()
         ["content"] = "",
         ["embeds"] = {{
             ["title"] = "🔔 TEST WEBHOOK BERHASIL!",
-            ["description"] = "Pesan ini dikirim dari Fish it.",
+            ["description"] = "Pesan ini dikirim dari Fish It.",
             ["color"] = 0x00ff00,
             ["fields"] = {
                 {["name"] = "Status", ["value"] = "✅ Webhook aktif & bisa dipakai", ["inline"] = true},
@@ -107,20 +146,7 @@ local function testWebhook()
         }}
     }
     local body = HttpService:JSONEncode(data)
-    local requestFunc = (http_request or request or syn and syn.request)
-    if requestFunc then
-        pcall(function()
-            requestFunc({
-                Url = webhookUrl,
-                Method = "POST",
-                Headers = {["Content-Type"] = "application/json"},
-                Body = body
-            })
-        end)
-        print("✅ Tes webhook terkirim ke Discord!")
-    else
-        warn("⚠️ Executor tidak support request!")
-    end
+    doRequest(body)
 end
 
 -- Deteksi chat
@@ -142,6 +168,7 @@ local function setupChatDetection()
                     for _, name in ipairs(secretFish) do
                         if fishName:lower():find(name:lower()) then
                             rarity = "Secret"
+                            secretCount += 1
                             break
                         end
                     end
@@ -149,6 +176,7 @@ local function setupChatDetection()
                         for _, name in ipairs(mythicFish) do
                             if fishName:lower():find(name:lower()) then
                                 rarity = "Mythic"
+                                mythicCount += 1
                                 break
                             end
                         end
@@ -268,4 +296,13 @@ end
 -- Init
 setupChatDetection()
 setupAutoRejoin()
-print("✅ Fish It Webhook siap jalan (Mythic & Secret only)")
+
+-- Monitoring loop tiap 5 menit
+spawn(function()
+    while true do
+        sendMonitoring()
+        task.wait(300)
+    end
+end)
+
+print("✅ Fish It Webhook siap jalan (Mythic & Secret only + Monitoring)")
