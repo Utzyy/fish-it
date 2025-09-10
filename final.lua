@@ -1,5 +1,5 @@
 -- Fish It Webhook AFK Script (Delta Mobile Version)
--- Ringan & aman untuk Delta Lite (mobile)
+-- Ringan & aman
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local HttpService = game:GetService("HttpService")
