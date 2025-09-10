@@ -136,7 +136,7 @@ local function testWebhook()
         ["content"] = "",
         ["embeds"] = {{
             ["title"] = "🔔 TEST WEBHOOK BERHASIL!",
-            ["description"] = "Pesan ini dikirim dari Fish It.",
+            ["description"] = "Pesan ini dikirim dari 🎣Fish It.",
             ["color"] = 0x00ff00,
             ["fields"] = {
                 {["name"] = "Status", ["value"] = "✅ Webhook aktif & bisa dipakai", ["inline"] = true},
